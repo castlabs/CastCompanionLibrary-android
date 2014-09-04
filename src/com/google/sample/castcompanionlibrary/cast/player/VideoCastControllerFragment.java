@@ -769,7 +769,7 @@ public class VideoCastControllerFragment extends Fragment implements OnVideoCast
             mMediaAuthService.abort(MediaAuthStatus.ABORT_USER_CANCELLED);
         }
 
-        mCastManager.clearContext(getActivity());
+        //mCastManager.clearContext(getActivity());
     }
 
 }
