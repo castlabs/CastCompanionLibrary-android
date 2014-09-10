@@ -73,6 +73,7 @@ import android.os.Bundle;
 import android.support.v7.app.MediaRouteDialogFactory;
 import android.support.v7.media.MediaRouter.RouteInfo;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 
@@ -151,6 +152,7 @@ public class VideoCastManager extends BaseCastManager
     private Set<IVideoCastConsumer> mVideoConsumers;
     private IMediaAuthService mAuthService;
     private long mLiveStreamDuration = DEFAULT_LIVE_STREAM_DURATION_MS;
+	private URL mLockScreenImageUrl;
 
     /**
      * Initializes the VideoCastManager for clients. Before clients can use VideoCastManager, they
@@ -1683,6 +1685,17 @@ public class VideoCastManager extends BaseCastManager
         updateLockScreenMetadata();
     }
 
+	private URL getImageUrl(MediaInfo info){
+		List<WebImage> images = info.getMetadata().getImages();
+		try {
+			if (images.size() > 1) {
+				return new URL(images.get(1).getUrl().toString());
+			} else if (images.size() == 1) {
+				return new URL(images.get(0).getUrl().toString());
+			}
+		}catch(Exception e){}
+		return null;
+	}
     /*
      * Updates lock screen image
      */
@@ -1690,26 +1703,31 @@ public class VideoCastManager extends BaseCastManager
         if (null == info) {
             return;
         }
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                if (null == mRemoteControlClientCompat) {
-                    return;
-                }
-                try {
-                    Bitmap bm = getBitmapForLockScreen(info);
-                    if (null == bm) {
-                        return;
-                    }
-                    mRemoteControlClientCompat.editMetadata(false).putBitmap(
-                            RemoteControlClientCompat.MetadataEditorCompat.
-                                    METADATA_KEY_ARTWORK, bm
-                    ).apply();
-                } catch (Exception e) {
-                    LOGD(TAG, "Failed to update lock screen image", e);
-                }
-            }
-        }).start();
+		URL imageUrl = getImageUrl(info);
+		if(imageUrl == null || !imageUrl.equals(mLockScreenImageUrl)) {
+			mLockScreenImageUrl = imageUrl;
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					if (null == mRemoteControlClientCompat) {
+						return;
+					}
+					try {
+						Log.e("TESTOR", "Updating lock screen image....");
+						Bitmap bm = getBitmapForLockScreen(info);
+						if (null == bm) {
+							return;
+						}
+						mRemoteControlClientCompat.editMetadata(false).putBitmap(
+								RemoteControlClientCompat.MetadataEditorCompat.
+										METADATA_KEY_ARTWORK, bm
+						).apply();
+					} catch (Exception e) {
+						LOGD(TAG, "Failed to update lock screen image", e);
+					}
+				}
+			}).start();
+		}
     }
 
     /*
@@ -1748,6 +1766,7 @@ public class VideoCastManager extends BaseCastManager
 
         if (null != imgUrl) {
             try {
+				Log.e("TESTOR", "Decode for lock screen");
                 bm = BitmapFactory.decodeStream(imgUrl.openStream());
             } catch (IOException e) {
                 LOGE(TAG, "Failed to decoded a bitmap for url: " + imgUrl, e);
